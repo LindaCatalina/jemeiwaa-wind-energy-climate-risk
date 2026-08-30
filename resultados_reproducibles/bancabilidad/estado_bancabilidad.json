@@ -1,0 +1,320 @@
+{
+  "schema_version": "1.0",
+  "status": "BLOCKED_MISSING_OR_INVALID_INPUTS",
+  "ready_for_preliminary_p90": false,
+  "financial_p90_calculated": false,
+  "bankable": false,
+  "disclaimer": "Las cifras absolutas de energía del análisis climático son académicas, no bancables. Un P90 financiero requiere datos observados horarios/10-min, curva V172 certificada, estelas, disponibilidad, pérdidas eléctricas y cuantificación trazable de incertidumbres. Incluso una ejecución completa de este módulo es preliminar y requiere revisión de un ingeniero independiente.",
+  "config_file": "bankability/config.example.json",
+  "config_sha256": "78b7d8a16f3008b31e613fdf794ee38a291269f770948ea720e9718d6fe55c78",
+  "checks": [
+    {
+      "id": "project.turbine_count",
+      "required": true,
+      "passed": true,
+      "detail": "Valor=162"
+    },
+    {
+      "id": "project.rated_power_kw",
+      "required": true,
+      "passed": true,
+      "detail": "Valor=6800"
+    },
+    {
+      "id": "wind.file_exists",
+      "required": true,
+      "passed": false,
+      "detail": "No configurado"
+    },
+    {
+      "id": "wind.source_documented",
+      "required": true,
+      "passed": false,
+      "detail": "Falta fuente/campaña/MCP"
+    },
+    {
+      "id": "wind.measurement_campaign",
+      "required": true,
+      "passed": false,
+      "detail": "Meses=None"
+    },
+    {
+      "id": "wind.long_term_reference",
+      "required": true,
+      "passed": false,
+      "detail": "Años=None"
+    },
+    {
+      "id": "curve.file_exists",
+      "required": true,
+      "passed": false,
+      "detail": "No configurado"
+    },
+    {
+      "id": "curve.certificate_documented",
+      "required": true,
+      "passed": false,
+      "detail": "Falta certificado V172/mode 6.8 MW"
+    },
+    {
+      "id": "curve.reference_density",
+      "required": true,
+      "passed": false,
+      "detail": "Valor=None"
+    },
+    {
+      "id": "loss.wake.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.wake.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.availability.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.availability.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.electrical.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.electrical.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.turbine_performance.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.turbine_performance.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.environmental.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.environmental.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.curtailment.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.curtailment.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "uncertainty.resource_measurement",
+      "required": true,
+      "passed": false,
+      "detail": "Sigma fraccional=None"
+    },
+    {
+      "id": "uncertainty.long_term_correction",
+      "required": true,
+      "passed": false,
+      "detail": "Sigma fraccional=None"
+    },
+    {
+      "id": "uncertainty.vertical_extrapolation",
+      "required": true,
+      "passed": false,
+      "detail": "Sigma fraccional=None"
+    },
+    {
+      "id": "uncertainty.power_curve_model",
+      "required": true,
+      "passed": false,
+      "detail": "Sigma fraccional=None"
+    },
+    {
+      "id": "simulation.n_samples",
+      "required": true,
+      "passed": true,
+      "detail": "Valor=50000"
+    },
+    {
+      "id": "simulation.seed",
+      "required": true,
+      "passed": true,
+      "detail": "Valor=20260830"
+    }
+  ],
+  "blockers": [
+    {
+      "id": "wind.file_exists",
+      "required": true,
+      "passed": false,
+      "detail": "No configurado"
+    },
+    {
+      "id": "wind.source_documented",
+      "required": true,
+      "passed": false,
+      "detail": "Falta fuente/campaña/MCP"
+    },
+    {
+      "id": "wind.measurement_campaign",
+      "required": true,
+      "passed": false,
+      "detail": "Meses=None"
+    },
+    {
+      "id": "wind.long_term_reference",
+      "required": true,
+      "passed": false,
+      "detail": "Años=None"
+    },
+    {
+      "id": "curve.file_exists",
+      "required": true,
+      "passed": false,
+      "detail": "No configurado"
+    },
+    {
+      "id": "curve.certificate_documented",
+      "required": true,
+      "passed": false,
+      "detail": "Falta certificado V172/mode 6.8 MW"
+    },
+    {
+      "id": "curve.reference_density",
+      "required": true,
+      "passed": false,
+      "detail": "Valor=None"
+    },
+    {
+      "id": "loss.wake.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.wake.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.availability.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.availability.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.electrical.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.electrical.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.turbine_performance.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.turbine_performance.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.environmental.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.environmental.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "loss.curtailment.values",
+      "required": true,
+      "passed": false,
+      "detail": "media=None; sigma=None"
+    },
+    {
+      "id": "loss.curtailment.evidence",
+      "required": true,
+      "passed": false,
+      "detail": "Falta estudio, contrato o hipótesis trazable"
+    },
+    {
+      "id": "uncertainty.resource_measurement",
+      "required": true,
+      "passed": false,
+      "detail": "Sigma fraccional=None"
+    },
+    {
+      "id": "uncertainty.long_term_correction",
+      "required": true,
+      "passed": false,
+      "detail": "Sigma fraccional=None"
+    },
+    {
+      "id": "uncertainty.vertical_extrapolation",
+      "required": true,
+      "passed": false,
+      "detail": "Sigma fraccional=None"
+    },
+    {
+      "id": "uncertainty.power_curve_model",
+      "required": true,
+      "passed": false,
+      "detail": "Sigma fraccional=None"
+    }
+  ],
+  "quality": {},
+  "warnings": [
+    "El ensamble CMIP6 no es una distribución probabilística financiera.",
+    "La simulación asume independencia entre categorías de pérdidas e incertidumbre.",
+    "La aceptación final requiere revisión contractual y de un ingeniero independiente."
+  ]
+}

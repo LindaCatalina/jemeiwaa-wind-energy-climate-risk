@@ -1,0 +1,8 @@
+# Dependencias opcionales: solo para reconstruir datos desde CDS/Pangeo.
+# Los NetCDF no se publican en GitHub; las tablas y figuras quedan incluidas.
+-r requirements.txt
+cdsapi==0.7.6
+intake==2.0.8
+intake-esm>=2025.7
+gcsfs>=2025.9
+zarr>=3.1,<4

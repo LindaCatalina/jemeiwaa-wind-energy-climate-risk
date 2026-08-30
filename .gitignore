@@ -1,0 +1,55 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Datos climaticos crudos/derivados: se reconstruyen desde fuentes oficiales.
+# Permanecen intactos en esta copia local, pero nunca se publican en GitHub.
+*.nc
+*.nc4
+*.grib
+*.grb
+*.zarr/
+*.zip
+*.tar
+*.tar.gz
+*.7z
+
+# Galeria publica curada: no publicar figuras legadas, vacias o redundantes.
+/CMIP6_Guajira/**/*.png
+/resultados_reproducibles/figuras_legacy_reparadas/
+/resultados_reproducibles/legado/figuras/02_cambio_cf_por_modelo.png
+/resultados_reproducibles/legado/figuras/03_energia_p50_p90.png
+/resultados_reproducibles/legado/figuras/04_cf_mensual_percentiles.png
+/resultados_reproducibles/sensibilidad_sin_recentrado/figuras/02_cambio_cf_por_modelo.png
+
+# Auditoria local detallada. Se publica el resumen, no listados redundantes.
+/resultados_reproducibles/auditoria/*.csv
+
+# Scripts exploratorios sustituidos por flujos portables o con salidas defectuosas.
+# Se conservan localmente y se documentan en INFORME_AUDITORIA.md.
+/Datos_Era5/descargar_era5land_diario.py
+/CMIP6_Guajira/cmip6_pangeo_guajira.py
+/CMIP6_Guajira/model_validation.py
+/CMIP6_Guajira/plots_future.py
+
+# IDE, sistema operativo y archivos temporales
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+tmp_view.txt
+
+# Credenciales y secretos: nunca deben publicarse
+.env
+.env.*
+!.env.example
+.cdsapirc
+*.pem
+*.key
+
+# Insumos contractuales/privados para la evaluación pre-bancable
+bankability/private_data/
+bankability/private_documents/
+bankability/private_outputs/
+bankability/config.local.json

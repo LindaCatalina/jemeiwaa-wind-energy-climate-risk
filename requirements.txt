@@ -1,0 +1,10 @@
+# Entorno validado para la reproducción local (Python 3.12).
+numpy==2.3.4
+pandas==2.3.3
+xarray==2025.10.1
+matplotlib==3.10.7
+scipy==1.15.3
+dask[array]==2025.11.0
+netCDF4==1.7.3
+cftime==1.6.4.post1
+

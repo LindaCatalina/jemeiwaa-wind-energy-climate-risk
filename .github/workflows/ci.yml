@@ -1,0 +1,35 @@
+name: controles-portafolio
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio liviano
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar entorno fijado
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip check
+
+      - name: Validar estructura y seguridad
+        run: python scripts/check_repository.py --ci
+
+      - name: Verificar tablas y figuras del portafolio
+        run: python run_portfolio.py --check-only
+
+      - name: Impedir datos crudos, archivos grandes o figuras danadas
+        run: python scripts/check_publication.py
+
+      - name: Ejecutar pruebas livianas
+        run: python -m unittest discover -s tests -p "test_lightweight.py" -v

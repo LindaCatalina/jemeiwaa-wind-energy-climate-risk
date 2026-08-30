@@ -1,0 +1,58 @@
+{
+  "inventory": {
+    "files": 712,
+    "size_GiB": 5.737219270318747,
+    "sha256_complete": true
+  },
+  "netcdf": {
+    "files": 575,
+    "open_errors": 0
+  },
+  "era5": {
+    "n_days": 12418,
+    "start": "1981-01-01",
+    "end": "2014-12-31",
+    "unique_day_steps": [
+      1
+    ],
+    "nan_total": 0,
+    "wind_formula_max_abs_diff": 0.0,
+    "v150_formula_max_abs_diff": 0.0,
+    "rho_formula_max_abs_diff": 0.0,
+    "pass": true
+  },
+  "raw_canonical": {
+    "series": 48,
+    "coverage_failures": 0,
+    "nan_total": 0
+  },
+  "corrected": {
+    "n_series": 48,
+    "n_models": 12,
+    "all_formulas_reproduce": true,
+    "total_nan_wind": 0,
+    "total_nan_power": 0,
+    "series_with_negative_corrected_wind": 13,
+    "density_missing_count": 3,
+    "density_missing": [
+      "ACCESS-CM2:ssp585",
+      "CanESM5:ssp126",
+      "MIROC6:historical"
+    ],
+    "future_monthly_median_vs_era5_p50_max_abs_diff": 8.881784197001252e-16
+  },
+  "synthetic": {
+    "n_files": 48,
+    "observed_daily_mean_ratio_sample": 0.6264967265063495,
+    "theoretical_daily_mean_ratio_current_weibull": 0.6266570686577501,
+    "daily_mean_is_conserved": false
+  },
+  "legacy_table_and_figures": {
+    "rows": 84,
+    "models": 12,
+    "expected_future_baseline_pairs": 72,
+    "pairs_created_by_legacy_plot_code": 0,
+    "legacy_delta_plots_are_empty": true
+  },
+  "fatal_integrity_failures": 0
+}

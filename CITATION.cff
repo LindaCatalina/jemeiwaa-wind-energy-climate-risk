@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "Si utiliza este trabajo, cite el repositorio y a sus autores."
+title: "Impacto del cambio climático en el potencial eólico de Jemeiwaa Ka'I"
+type: software
+authors:
+  - family-names: "Correa Lozano"
+    given-names: "Linda Catalina"
+  - family-names: "Bedoya Carmona"
+    given-names: "Juan Camilo"
+version: 1.0.0
+date-released: 2026-08-30
+repository-code: "https://github.com/LindaCatalina/jemeiwaa-wind-energy-climate-risk"
+keywords:
+  - climate-risk
+  - wind-energy
+  - CMIP6
+  - ERA5-Land
+  - reproducible-research
