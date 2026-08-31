@@ -3,6 +3,7 @@ name: controles-portafolio
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   validate:
@@ -26,7 +27,7 @@ jobs:
         run: python scripts/check_repository.py --ci
 
       - name: Verificar tablas y figuras del portafolio
-        run: python scripts/rebuild_figures.py --check-only
+        run: python scripts/rebuild_figures.py
 
       - name: Impedir datos crudos, archivos grandes o figuras danadas
         run: python scripts/check_publication.py
