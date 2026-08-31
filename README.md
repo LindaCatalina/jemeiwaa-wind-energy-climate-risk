@@ -204,11 +204,12 @@ preparación permanecen fuera de GitHub mediante `.gitignore`.
 - Control de calidad: detección y corrección de una inconsistencia no lineal sin
   ocultar las limitaciones del estudio.
 
-## Autores y citación
+## Autores
 
-**Linda Catalina Correa Lozano** · **Juan Camilo Bedoya Carmona**  
-Proyecto académico de Climatología. La citación se encuentra en
-[`CITATION.cff`](CITATION.cff).
+- [Juan Camilo Bedoya Carmona](https://github.com/CamiloBedoyaC)
+- [Linda Catalina Correa Lozano](https://github.com/LindaCatalina)
+
+Trabajo académico desarrollado conjuntamente.
 
 ### Fuentes principales
 
