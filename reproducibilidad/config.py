@@ -6,8 +6,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 ERA5_DIR = PROJECT_ROOT / "Datos_Era5"
 CMIP6_DIR = PROJECT_ROOT / "CMIP6_Guajira"
 CORRECTED_DIR = CMIP6_DIR / "corrected"
-SYNTHETIC_DIR = CMIP6_DIR / "synthetic_10min"
-LEGACY_SPLIT_TABLE = CMIP6_DIR / "metrics_future" / "tables" / "metrics_future_split.csv"
+RESULTS_DIR = PROJECT_ROOT / "results"
 
 # Es el conjunto de 12 modelos utilizado en las figuras y conclusiones de la
 # presentación. Se fija explícitamente para evitar que un ranking cambie el
@@ -43,4 +42,3 @@ Z_REF_M = 10.0
 Z_HUB_M = 150.0
 LOSSES = 0.10
 RHO_REF = 1.225
-

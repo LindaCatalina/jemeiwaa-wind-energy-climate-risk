@@ -18,22 +18,46 @@ MAX_PUBLIC_FILE = 10 * 1024 * 1024
 RAW_SUFFIXES = {".nc", ".nc4", ".grib", ".grb", ".zip", ".7z", ".tar", ".gz", ".tgz"}
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
 REQUIRED_FIGURES = (
-    "resultados_reproducibles/legado/figuras/01_cambio_cf_percentiles.png",
-    "resultados_reproducibles/sensibilidad_sin_recentrado/figuras/01_cambio_cf_percentiles.png",
-    "resultados_reproducibles/sensibilidad_sin_recentrado/figuras/03_energia_p50_p90.png",
-    "resultados_reproducibles/sensibilidad_sin_recentrado/figuras/04_cf_mensual_percentiles.png",
+    "results/figures/01_linea_base_historica.png",
+    "results/figures/02_cambio_cf_percentiles.png",
+    "results/figures/03_sensibilidad_metodologica.png",
+    "results/figures/04_estacionalidad_cf.png",
+    "results/figures/05_validacion_correccion_sesgo.png",
 )
-FORBIDDEN_FIGURES = {
-    "CMIP6_Guajira/metrics_future/plots/delta_cf_models.png",
-    "CMIP6_Guajira/metrics_future/plots/delta_energy_models.png",
-}
+FORBIDDEN_PREFIXES = (
+    "CMIP6_Guajira/metrics_future/",
+    "CMIP6_Guajira/mod_seleccion_ajustados/",
+    "CMIP6_Guajira/synthetic_10min/",
+    "CMIP6_Guajira/validation_outputs/",
+    "_archivo_interno/",
+)
 REQUIRED_PUBLIC_FILES = {
     "README.md",
+    "CITATION.cff",
     "data/cmip6_source_manifest.csv",
     "data/era5_request_manifest.csv",
-    "docs/GITHUB_PUBLICACION.md",
-    "run_portfolio.py",
+    "docs/DATOS.md",
+    "docs/METODOLOGIA.md",
+    "docs/REPRODUCIBILIDAD.md",
+    "docs/LIMITACIONES.md",
+    "scripts/rebuild_figures.py",
+    "scripts/run_analysis.py",
+    "scripts/run_full_rebuild.py",
+    "CMIP6_Guajira/bias_eval_cmip6.py",
+    "CMIP6_Guajira/prepare_bias_corrected_inputs.py",
+    "results/tables/percentiles_cambio_cf.csv",
+    "results/tables/percentiles_cf_mensual.csv",
+    "results/tables/validacion_cuantiles_mensuales.csv",
+    "results/tables/validacion_error_cuantiles_por_modelo.csv",
     *REQUIRED_FIGURES,
+}
+ALLOWED_ROOT_FILES = {
+    ".gitattributes",
+    ".gitignore",
+    "CITATION.cff",
+    "README.md",
+    "requirements-download.txt",
+    "requirements.txt",
 }
 
 
@@ -53,16 +77,32 @@ def main() -> int:
     failures: list[str] = []
     missing = REQUIRED_PUBLIC_FILES - relative
     failures.extend(f"Falta en la publicacion: {name}" for name in sorted(missing))
-    failures.extend(f"Figura prohibida incluida: {name}" for name in sorted(FORBIDDEN_FIGURES & relative))
+    failures.extend(
+        f"Salida legada incluida: {name}"
+        for name in sorted(relative)
+        if name.startswith(FORBIDDEN_PREFIXES)
+    )
+
+    root_files = {name for name in relative if "/" not in name}
+    failures.extend(
+        f"Archivo innecesario en la raíz pública: {name}"
+        for name in sorted(root_files - ALLOWED_ROOT_FILES)
+    )
 
     for path in paths:
         name = path.relative_to(ROOT).as_posix()
         if path.suffix.lower() in RAW_SUFFIXES or ".zarr/" in name:
             failures.append(f"Dato crudo incluido: {name}")
+        if path.suffix.lower() == ".ipynb" or name.startswith("_archivo_interno/"):
+            failures.append(f"Archivo interno incluido: {name}")
         if path.stat().st_size > MAX_PUBLIC_FILE:
             failures.append(f"Archivo >10 MiB: {name}")
 
     public_figures = [path for path in paths if path.suffix.lower() == ".png"]
+    if len(public_figures) != len(REQUIRED_FIGURES):
+        failures.append(
+            f"Se esperaban {len(REQUIRED_FIGURES)} figuras públicas; encontradas={len(public_figures)}"
+        )
     for path in public_figures:
         name = path.relative_to(ROOT).as_posix()
         image = mpimg.imread(path)

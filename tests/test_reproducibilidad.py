@@ -6,8 +6,12 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from reproducibilidad.config import CANONICAL_MODELS, ERA5_DIR, LEGACY_SPLIT_TABLE
-from reproducibilidad.core import cf_from_wind_reference_density, extrapolate_to_hub
+from reproducibilidad.config import CANONICAL_MODELS, ERA5_DIR
+from reproducibilidad.core import (
+    daily_cf_from_mean_hub_wind,
+    deterministic_weibull_multipliers,
+    extrapolate_to_hub,
+)
 from reproducibilidad.percentiles import summarize_energy
 
 
@@ -23,19 +27,15 @@ class ReproducibilityTests(unittest.TestCase):
             ds.close()
             alt.close()
 
-    def test_power_curve_physical_bounds(self):
-        v10 = xr.DataArray(np.linspace(0, 30, 301), dims="time", coords={"time": np.arange(301)})
-        cf = cf_from_wind_reference_density(v10)
-        self.assertGreaterEqual(float(cf.min()), 0.0)
-        self.assertLessEqual(float(cf.max()), 0.9 + 1e-12)
-
-    def test_legacy_table_has_12_models_and_future_pairs(self):
-        df = pd.read_csv(LEGACY_SPLIT_TABLE)
-        self.assertEqual(set(df.model), set(CANONICAL_MODELS))
-        hist = df[(df.exp == "historical") & (df.horizon == "hist")][["model", "cf_mean"]]
-        fut = df[(df.exp != "historical") & (df.horizon != "hist")]
-        paired = fut.merge(hist, on="model")
-        self.assertEqual(len(paired), 72)
+    def test_subdaily_integration_is_deterministic_and_physical(self):
+        multipliers = deterministic_weibull_multipliers(144, 2.0)
+        self.assertAlmostEqual(float(multipliers.mean()), 1.0, places=14)
+        wind = xr.DataArray(np.linspace(0, 30, 301), dims="time")
+        first = daily_cf_from_mean_hub_wind(wind)
+        second = daily_cf_from_mean_hub_wind(wind)
+        np.testing.assert_array_equal(first.values, second.values)
+        self.assertGreaterEqual(float(first.min()), 0.0)
+        self.assertLessEqual(float(first.max()), 0.9 + 1e-12)
 
     def test_p90_exceedance_is_q10(self):
         rows = []
@@ -43,20 +43,22 @@ class ReproducibilityTests(unittest.TestCase):
             for year in range(2000, 2003):
                 rows.append(
                     {
+                        "method": "test",
                         "model": model,
                         "scenario": "historical",
                         "horizon": "historico",
                         "year": year,
-                        "energy_plant_GWh": 1000 + 10 * model_index + year - 2000,
+                        "energy_equivalent_GWh": 1000 + 10 * model_index + year - 2000,
                     }
                 )
         ensemble, interannual = summarize_energy(pd.DataFrame(rows))
         self.assertAlmostEqual(
             float(ensemble.loc[0, "P90_exceedance_GWh"]), float(ensemble.loc[0, "q10"])
         )
-        self.assertTrue((interannual["P90_exceedance_GWh"] <= interannual["P50_exceedance_GWh"]).all())
+        self.assertTrue(
+            (interannual["P90_exceedance_GWh"] <= interannual["P50_exceedance_GWh"]).all()
+        )
 
 
 if __name__ == "__main__":
     unittest.main()
-

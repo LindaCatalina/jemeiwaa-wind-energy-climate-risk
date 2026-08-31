@@ -5,34 +5,34 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 
-from bankability.pipeline import evaluate_readiness
-from reproducibilidad.core import cf_from_wind_reference_density
-from run_portfolio import load_tables, validate_figures
+from reproducibilidad.config import PLANT_CAPACITY_MW, RESULTS_DIR
+from reproducibilidad.core import (
+    daily_cf_from_mean_hub_wind,
+    deterministic_weibull_multipliers,
+)
+from scripts.rebuild_figures import validate_figures, validate_tables
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class LightweightTests(unittest.TestCase):
-    def test_proxy_curve_stays_within_legacy_physical_bounds(self):
-        wind = xr.DataArray(np.linspace(0, 30, 301), dims="time")
-        cf = cf_from_wind_reference_density(wind)
+    def test_subdaily_states_conserve_daily_mean_exactly(self):
+        multipliers = deterministic_weibull_multipliers()
+        self.assertEqual(len(multipliers), 144)
+        self.assertAlmostEqual(float(multipliers.mean()), 1.0, places=14)
+        daily_means = np.array([3.0, 7.5, 12.0])
+        reconstructed = daily_means[:, None] * multipliers[None, :]
+        np.testing.assert_allclose(reconstructed.mean(axis=1), daily_means, rtol=1e-14)
+
+    def test_integrated_cf_has_physical_bounds(self):
+        wind_hub = xr.DataArray(np.linspace(0, 30, 301), dims="time")
+        cf = daily_cf_from_mean_hub_wind(wind_hub)
         self.assertGreaterEqual(float(cf.min()), 0.0)
         self.assertLessEqual(float(cf.max()), 0.9 + 1e-12)
-
-    def test_public_bankability_config_refuses_financial_p90(self):
-        _, status = evaluate_readiness(ROOT / "bankability" / "config.example.json")
-        self.assertFalse(status["ready_for_preliminary_p90"])
-        self.assertFalse(status["financial_p90_calculated"])
-        self.assertFalse(status["bankable"])
-        blocker_ids = {item["id"] for item in status["blockers"]}
-        self.assertIn("wind.file_exists", blocker_ids)
-        self.assertIn("curve.certificate_documented", blocker_ids)
-        self.assertIn("loss.wake.values", blocker_ids)
-        self.assertIn("loss.availability.values", blocker_ids)
-        self.assertIn("loss.electrical.values", blocker_ids)
 
     def test_public_source_manifests_are_complete(self):
         expected = {
@@ -43,10 +43,13 @@ class LightweightTests(unittest.TestCase):
             with (ROOT / relative).open(encoding="utf-8", newline="") as stream:
                 self.assertEqual(sum(1 for _ in csv.DictReader(stream)), count)
 
-    def test_portfolio_tables_and_figures_are_valid(self):
-        tables = load_tables()
-        self.assertEqual(len(tables["legacy_change"]), 6)
-        self.assertEqual(len(tables["sensitivity_monthly"]), 84)
+    def test_energy_is_consistent_with_cf(self):
+        annual = pd.read_csv(RESULTS_DIR / "tables/metricas_anuales.csv")
+        expected = annual["cf_annual"] * PLANT_CAPACITY_MW * 8760.0 / 1000.0
+        np.testing.assert_allclose(annual["energy_equivalent_GWh"], expected, rtol=1e-12)
+
+    def test_public_tables_and_figures_are_valid(self):
+        validate_tables()
         validate_figures()
 
 

@@ -1,17 +1,18 @@
-# Código climático original y productos intermedios
+# Procesamiento CMIP6
 
-Esta carpeta conserva el código funcional con el que se corrigieron y
-transformaron los modelos CMIP6, además de las tablas pequeñas de trazabilidad.
-Los NetCDF y las figuras legadas no se publican: se reconstruyen o se sustituyen
-por la galería auditada.
+Esta carpeta contiene el código que corrige y transforma los modelos CMIP6,
+además de factores de sesgo y tablas intermedias pequeñas. Los NetCDF y las
+figuras exploratorias no se publican; la galería final está en
+`../results/figures/`.
 
-El descargador antiguo con ruta absoluta, el script de validación no canónico y
-el generador de las figuras vacías se conservan localmente, pero están excluidos
-de GitHub. Sus hallazgos quedan registrados en la auditoría. Use:
+Puntos de entrada:
 
-- `../run_portfolio.py` para validar/regenerar las figuras publicadas sin datos crudos;
-- `../run_full_rebuild.py` para una reconstrucción completa en un clon limpio;
-- `../run_reproducible.py` para la auditoría científica cuando los datos existen.
+- `bias_eval_cmip6.py`: calcula cuantiles mensuales ERA5–CMIP6;
+- `prepare_bias_corrected_inputs.py`: prepara viento y densidad diarios del
+  método con recentrado, sin calcular CF directamente;
+- `../scripts/rebuild_figures.py`: regenera la galería desde CSV públicos;
+- `../scripts/run_analysis.py`: recalcula resultados con los NetCDF locales;
+- `../scripts/run_full_rebuild.py`: reconstruye todo desde las fuentes.
 
-La revisión detallada de supuestos y limitaciones está en
-[INFORME_AUDITORIA.md](../INFORME_AUDITORIA.md).
+Consulte [Metodología](../docs/METODOLOGIA.md),
+[Datos](../docs/DATOS.md) y [Limitaciones](../docs/LIMITACIONES.md).

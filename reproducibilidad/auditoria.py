@@ -1,10 +1,9 @@
-"""Auditoría automática, no destructiva, de datos y resultados existentes."""
+"""AuditorÃ­a no destructiva del flujo cientÃ­fico vigente."""
 
 from __future__ import annotations
 
 import hashlib
 import json
-import math
 from pathlib import Path
 
 import numpy as np
@@ -14,35 +13,34 @@ from netCDF4 import Dataset as NetCDF4Dataset
 
 from .config import (
     CANONICAL_MODELS,
-    CMIP6_DIR,
     CORRECTED_DIR,
     ERA5_DIR,
     EXPERIMENTS,
-    LEGACY_SPLIT_TABLE,
     PROJECT_ROOT,
-    RATING_MW,
-    SYNTHETIC_DIR,
+    RESULTS_DIR,
 )
 from .core import (
     as_time_series,
+    deterministic_weibull_multipliers,
     extrapolate_to_hub,
-    load_quantiles,
     open_netcdf_robust,
-    proxy_power_curve_mw,
     raw_wind_path,
     year_values,
 )
 
 
-IGNORED_PARTS = {".git", ".venv", "__pycache__", ".pytest_cache"}
+IGNORED_PARTS = {
+    ".git",
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    "_archivo_interno",
+    "synthetic_10min",
+}
 
 
 def _project_files(pattern: str = "*") -> list[Path]:
-    """Lista archivos científicos sin incluir metadatos locales o cachés.
-
-    Excluir `.git` evita que el manifiesto cambie por cada commit y que una
-    auditoría profunda intente hashear objetos internos del repositorio.
-    """
+    """Lista archivos del proyecto sin cachÃ©s ni material legado local."""
     return [
         path
         for path in PROJECT_ROOT.rglob(pattern)
@@ -59,11 +57,11 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def build_inventory(output_root: Path, deep: bool) -> pd.DataFrame:
-    rows = []
+def build_inventory(output_root: Path, deep: bool = False) -> pd.DataFrame:
+    """Construye un inventario; los NetCDF solo se hashean con ``deep``."""
+    rows: list[dict] = []
     output_resolved = output_root.resolve()
-    files = _project_files()
-    for index, path in enumerate(sorted(files)):
+    for path in sorted(_project_files()):
         try:
             path.resolve().relative_to(output_resolved)
             continue
@@ -78,15 +76,13 @@ def build_inventory(output_root: Path, deep: bool) -> pd.DataFrame:
                 "sha256": _sha256(path) if should_hash else "",
             }
         )
-        if deep and (index + 1) % 100 == 0:
-            print(f"[AUDIT] Hash {index + 1}/{len(files)}")
     return pd.DataFrame(rows)
 
 
 def audit_netcdf_headers() -> pd.DataFrame:
-    rows = []
-    files = sorted(_project_files("*.nc"))
-    for index, path in enumerate(files):
+    """Verifica que todos los NetCDF locales puedan abrir su cabecera."""
+    rows: list[dict] = []
+    for path in sorted(_project_files("*.nc")):
         row = {
             "path": path.relative_to(PROJECT_ROOT).as_posix(),
             "size_bytes": path.stat().st_size,
@@ -94,68 +90,54 @@ def audit_netcdf_headers() -> pd.DataFrame:
             "error": "",
         }
         try:
-            # netCDF4 inspecciona únicamente la cabecera. Es mucho más rápido
-            # que construir 575 objetos xarray y no materializa coordenadas de
-            # millones de timestamps en las series subdiarias.
-            with NetCDF4Dataset(path, mode="r") as ds:
+            with NetCDF4Dataset(path, mode="r") as dataset:
                 row["open_ok"] = True
                 row["dimensions"] = ";".join(
-                    f"{name}:{len(dimension)}" for name, dimension in ds.dimensions.items()
+                    f"{name}:{len(dimension)}"
+                    for name, dimension in dataset.dimensions.items()
                 )
-                coord_names = set(ds.dimensions)
-                row["data_variables"] = "|".join(
-                    name for name in ds.variables if name not in coord_names
-                )
-                row["time_size"] = int(len(ds.dimensions["time"])) if "time" in ds.dimensions else 0
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover - solo con datos daÃ±ados
             row["error"] = f"{type(exc).__name__}: {exc}"
         rows.append(row)
-        if (index + 1) % 100 == 0:
-            print(f"[AUDIT] Cabeceras NetCDF {index + 1}/{len(files)}")
     return pd.DataFrame(rows)
 
 
 def audit_era5() -> dict:
+    """Comprueba cobertura y fÃ³rmulas de los productos ERA5 locales."""
     source = ERA5_DIR / "era5_guajira_daily_1981_2014.nc"
     derived = ERA5_DIR / "era5_guajira_daily_1981_2014_150m.nc"
-    ds = xr.open_dataset(source)
-    alt = xr.open_dataset(derived)
-    try:
-        wind_diff = float(abs(np.hypot(ds["u10"], ds["v10"]) - ds["wind10"]).max())
-        v150_diff = float(abs(extrapolate_to_hub(ds["wind10"]) - alt["v150_power"]).max())
-        rho_diff = float(abs(ds["sp"] / (287.05 * ds["t2m"]) - alt["rho"]).max())
-        time = pd.to_datetime(ds["time"].values)
+    with xr.open_dataset(source) as base, xr.open_dataset(derived) as hub:
+        wind_diff = float(abs(np.hypot(base["u10"], base["v10"]) - base["wind10"]).max())
+        v150_diff = float(abs(extrapolate_to_hub(base["wind10"]) - hub["v150_power"]).max())
+        rho_diff = float(abs(base["sp"] / (287.05 * base["t2m"]) - hub["rho"]).max())
+        time = pd.to_datetime(base["time"].values)
         steps = np.diff(time.values).astype("timedelta64[D]").astype(int)
+        passed = (
+            base.sizes["time"] == 12418
+            and wind_diff == 0.0
+            and v150_diff == 0.0
+            and rho_diff == 0.0
+            and set(steps) == {1}
+        )
         return {
-            "n_days": int(ds.sizes["time"]),
+            "n_days": int(base.sizes["time"]),
             "start": str(time[0].date()),
             "end": str(time[-1].date()),
-            "unique_day_steps": sorted(set(map(int, steps))),
-            "nan_total": int(ds.to_array().isnull().sum()),
             "wind_formula_max_abs_diff": wind_diff,
             "v150_formula_max_abs_diff": v150_diff,
             "rho_formula_max_abs_diff": rho_diff,
-            "pass": (
-                ds.sizes["time"] == 12418
-                and wind_diff == 0.0
-                and v150_diff == 0.0
-                and rho_diff == 0.0
-                and set(steps) == {1}
-            ),
+            "pass": bool(passed),
         }
-    finally:
-        ds.close()
-        alt.close()
 
 
 def audit_raw_canonical() -> pd.DataFrame:
-    rows = []
+    """Revisa cobertura temporal y faltantes del ensamble canÃ³nico."""
+    rows: list[dict] = []
     for model in CANONICAL_MODELS:
         for experiment in EXPERIMENTS:
             path = raw_wind_path(model, experiment)
-            ds = open_netcdf_robust(path)
-            try:
-                wind = as_time_series(ds["sfcWind"])
+            with open_netcdf_robust(path) as dataset:
+                wind = as_time_series(dataset["sfcWind"])
                 years = year_values(wind)
                 expected = (
                     years.min() == 1981 and years.max() == 2014
@@ -166,7 +148,6 @@ def audit_raw_canonical() -> pd.DataFrame:
                     {
                         "model": model,
                         "experiment": experiment,
-                        "path": path.relative_to(PROJECT_ROOT).as_posix(),
                         "n_time": int(wind.sizes["time"]),
                         "start_year": int(years.min()),
                         "end_year": int(years.max()),
@@ -174,43 +155,18 @@ def audit_raw_canonical() -> pd.DataFrame:
                         "coverage_ok": bool(expected),
                     }
                 )
-            finally:
-                ds.close()
     return pd.DataFrame(rows)
 
 
-def audit_corrected() -> tuple[pd.DataFrame, dict]:
-    rows = []
-    density_missing = []
-    median_recentering_max_diff = 0.0
+def audit_corrected_inputs() -> pd.DataFrame:
+    """Valida los 48 insumos diarios que consume el anÃ¡lisis final."""
+    rows: list[dict] = []
     for model in CANONICAL_MODELS:
-        qtable = load_quantiles(model)
-        ref_median = qtable[qtable["source"] == "era5"].set_index("month")["p50"]
         for experiment in EXPERIMENTS:
             path = CORRECTED_DIR / f"{model}_{experiment}_wind_bc.nc"
-            ds = xr.open_dataset(path)
-            try:
-                wind = as_time_series(ds["wind_bc"])
-                v150 = as_time_series(ds["v150"])
-                power = as_time_series(ds["power_MW"])
-                cf = as_time_series(ds["cf"])
-                plant = as_time_series(ds["power_planta_MW"])
-                rho = as_time_series(ds["rho"]) if "rho" in ds else None
-                if rho is None:
-                    density_missing.append(f"{model}:{experiment}")
-                calc_v150 = extrapolate_to_hub(wind)
-                calc_power = proxy_power_curve_mw(calc_v150, rho if rho is not None else 1.225)
-                diffs = {
-                    "v150_diff": float(abs(calc_v150 - v150).max()),
-                    "power_diff": float(abs(calc_power - power).max()),
-                    "cf_diff": float(abs(power / RATING_MW - cf).max()),
-                    "plant_diff": float(abs(power * 162 - plant).max()),
-                }
+            with xr.open_dataset(path) as dataset:
+                wind = as_time_series(dataset["wind_bc"])
                 years = year_values(wind)
-                if experiment != "historical":
-                    med = wind.groupby("time.month").median("time").to_series()
-                    diff = float((med.reindex(range(1, 13)) - ref_median.reindex(range(1, 13))).abs().max())
-                    median_recentering_max_diff = max(median_recentering_max_diff, diff)
                 rows.append(
                     {
                         "model": model,
@@ -219,129 +175,62 @@ def audit_corrected() -> tuple[pd.DataFrame, dict]:
                         "start_year": int(years.min()),
                         "end_year": int(years.max()),
                         "nan_wind": int(wind.isnull().sum()),
-                        "nan_power": int(power.isnull().sum()),
-                        "wind_min": float(wind.min()),
-                        "wind_max": float(wind.max()),
-                        "negative_wind_count": int((wind < 0).sum()),
-                        "cf_min": float(cf.min()),
-                        "cf_max": float(cf.max()),
-                        "rho_available": rho is not None,
-                        **diffs,
-                        "formula_ok": all(value < 1e-10 for value in diffs.values()),
+                        "negative_wind": int((wind < 0).sum()),
+                        "rho_available": "rho" in dataset,
                     }
                 )
-            finally:
-                ds.close()
-    frame = pd.DataFrame(rows)
-    summary = {
-        "n_series": int(len(frame)),
-        "n_models": int(frame["model"].nunique()),
-        "all_formulas_reproduce": bool(frame["formula_ok"].all()),
-        "total_nan_wind": int(frame["nan_wind"].sum()),
-        "total_nan_power": int(frame["nan_power"].sum()),
-        "series_with_negative_corrected_wind": int((frame["negative_wind_count"] > 0).sum()),
-        "density_missing_count": len(density_missing),
-        "density_missing": density_missing,
-        "future_monthly_median_vs_era5_p50_max_abs_diff": median_recentering_max_diff,
-    }
-    return frame, summary
+    return pd.DataFrame(rows)
 
 
-def audit_legacy_table() -> dict:
-    table = pd.read_csv(LEGACY_SPLIT_TABLE)
-    hist = table[(table["exp"] == "historical") & (table["horizon"] == "hist")]
-    future = table[(table["exp"] != "historical") & (table["horizon"] != "hist")]
-    valid_pairs = future.merge(hist[["model", "cf_mean"]], on="model", how="inner")
-    # Reproduce el pivot defectuoso del script original: exp forma parte del
-    # índice, así que historical nunca se empareja con SSP.
-    broken_pairs = 0
-    for horizon in ("mid", "late"):
-        part = table[table["horizon"].isin(["hist", horizon])]
-        pivot = part.pivot_table(index=["model", "exp"], columns="horizon", values="cf_mean").dropna()
-        broken_pairs += len(pivot)
+def audit_subdaily_method() -> dict:
+    """Demuestra la conservaciÃ³n exacta de la media diaria vigente."""
+    multipliers = deterministic_weibull_multipliers()
     return {
-        "rows": int(len(table)),
-        "models": int(table["model"].nunique()),
-        "expected_future_baseline_pairs": int(len(valid_pairs)),
-        "pairs_created_by_legacy_plot_code": int(broken_pairs),
-        "legacy_delta_plots_are_empty": broken_pairs == 0,
+        "method": "deterministic Weibull midpoint quadrature",
+        "states_per_day": int(len(multipliers)),
+        "multiplier_mean": float(multipliers.mean()),
+        "daily_mean_is_conserved": bool(abs(float(multipliers.mean()) - 1.0) < 1e-12),
     }
 
 
-def audit_synthetic(deep: bool) -> tuple[pd.DataFrame, dict]:
-    rows = []
-    files = sorted(SYNTHETIC_DIR.glob("*_subdaily.nc"))
-    for index, path in enumerate(files):
-        ds = xr.open_dataset(path)
-        row = {
-            "file": path.name,
-            "n_time": int(ds.sizes.get("time", 0)),
-            "variables_ok": set(("v150_10min", "power_10min", "cf_10min")).issubset(ds.data_vars),
-        }
-        if deep:
-            for variable in ("v150_10min", "power_10min", "cf_10min"):
-                da = ds[variable]
-                row[f"{variable}_nan"] = int(da.isnull().sum())
-                row[f"{variable}_min"] = float(da.min())
-                row[f"{variable}_max"] = float(da.max())
-        ds.close()
-        rows.append(row)
-        if deep and (index + 1) % 8 == 0:
-            print(f"[AUDIT] Series sintéticas {index + 1}/{len(files)}")
-
-    # Comprobación empírica y teórica de conservación de la media diaria.
-    model = "NorESM2-MM"
-    corrected = xr.open_dataset(CORRECTED_DIR / f"{model}_historical_wind_bc.nc")
-    synthetic = xr.open_dataset(SYNTHETIC_DIR / f"{model}_historical_subdaily.nc")
-    try:
-        daily = np.asarray(as_time_series(corrected["v150"]).values, dtype=float)
-        sub = np.asarray(synthetic["v150_10min"].values, dtype=float).reshape(-1, 144).mean(axis=1)
-        n = min(len(daily), len(sub))
-        observed_ratio = float(np.mean(sub[:n] / daily[:n]))
-    finally:
-        corrected.close()
-        synthetic.close()
-    theoretical_ratio = float(math.gamma(1.5) / math.sqrt(2.0))
-    summary = {
-        "n_files": len(files),
-        "observed_daily_mean_ratio_sample": observed_ratio,
-        "theoretical_daily_mean_ratio_current_weibull": theoretical_ratio,
-        "daily_mean_is_conserved": abs(observed_ratio - 1.0) < 0.01,
+def audit_public_results() -> dict:
+    """Comprueba presencia y rango fÃ­sico de las tablas/figuras finales."""
+    annual = pd.read_csv(RESULTS_DIR / "tables" / "metricas_anuales.csv")
+    baseline = pd.read_csv(RESULTS_DIR / "tables" / "linea_base_historica_por_modelo.csv")
+    figures = sorted((RESULTS_DIR / "figures").glob("*.png"))
+    cf_columns = [column for column in annual.columns if column.startswith("cf_")]
+    cf_valid = all(annual[column].between(0, 0.9).all() for column in cf_columns)
+    passed = len(figures) == 5 and baseline["model"].nunique() == 12 and cf_valid
+    return {
+        "annual_rows": int(len(annual)),
+        "baseline_models": int(baseline["model"].nunique()),
+        "figures": int(len(figures)),
+        "cf_in_physical_range": bool(cf_valid),
+        "pass": bool(passed),
     }
-    return pd.DataFrame(rows), summary
 
 
 def run_audit(output_root: Path, deep: bool = False) -> dict:
+    """Ejecuta la auditorÃ­a y escribe reportes CSV/JSON en ``output_root``."""
     audit_dir = output_root / "auditoria"
     audit_dir.mkdir(parents=True, exist_ok=True)
 
-    print("[AUDIT] Inventario de archivos")
     inventory = build_inventory(output_root, deep)
     inventory.to_csv(audit_dir / "inventario_archivos.csv", index=False)
-
-    print("[AUDIT] Cabeceras NetCDF")
     headers = audit_netcdf_headers()
     headers.to_csv(audit_dir / "auditoria_cabeceras_netcdf.csv", index=False)
-
-    print("[AUDIT] ERA5")
-    era5 = audit_era5()
     raw = audit_raw_canonical()
-    raw.to_csv(audit_dir / "auditoria_cmip6_sfcwind_canonico.csv", index=False)
-
-    print("[AUDIT] Productos corregidos")
-    corrected, corrected_summary = audit_corrected()
+    raw.to_csv(audit_dir / "auditoria_cmip6_canonico.csv", index=False)
+    corrected = audit_corrected_inputs()
     corrected.to_csv(audit_dir / "auditoria_series_corregidas.csv", index=False)
 
-    print("[AUDIT] Productos sintéticos")
-    synthetic, synthetic_summary = audit_synthetic(deep)
-    synthetic.to_csv(audit_dir / "auditoria_series_sinteticas.csv", index=False)
-
-    legacy_table = audit_legacy_table()
+    era5 = audit_era5()
+    subdaily = audit_subdaily_method()
+    public = audit_public_results()
     result = {
         "inventory": {
             "files": int(len(inventory)),
             "size_GiB": float(inventory["size_bytes"].sum() / 2**30),
-            "sha256_complete": bool((inventory["sha256"] != "").all()),
         },
         "netcdf": {
             "files": int(len(headers)),
@@ -353,17 +242,21 @@ def run_audit(output_root: Path, deep: bool = False) -> dict:
             "coverage_failures": int((~raw["coverage_ok"]).sum()),
             "nan_total": int(raw["nan_count"].sum()),
         },
-        "corrected": corrected_summary,
-        "synthetic": synthetic_summary,
-        "legacy_table_and_figures": legacy_table,
+        "corrected_inputs": {
+            "series": int(len(corrected)),
+            "nan_total": int(corrected["nan_wind"].sum()),
+        },
+        "subdaily_integration": subdaily,
+        "public_results": public,
     }
     result["fatal_integrity_failures"] = int(
         (not era5["pass"])
         + result["netcdf"]["open_errors"]
         + result["raw_canonical"]["coverage_failures"]
-        + (not corrected_summary["all_formulas_reproduce"])
-        + corrected_summary["total_nan_wind"]
-        + corrected_summary["total_nan_power"]
+        + result["raw_canonical"]["nan_total"]
+        + result["corrected_inputs"]["nan_total"]
+        + (not subdaily["daily_mean_is_conserved"])
+        + (not public["pass"])
     )
     with (audit_dir / "resumen_auditoria.json").open("w", encoding="utf-8") as handle:
         json.dump(result, handle, indent=2, ensure_ascii=False)

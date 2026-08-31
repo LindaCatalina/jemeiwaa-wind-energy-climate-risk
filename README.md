@@ -1,7 +1,7 @@
 <h1 align="center">Riesgo climático del recurso eólico en La Guajira</h1>
 
 <p align="center">
-  <strong>De datos ERA5-Land y CMIP6 a evidencia para decisiones energéticas</strong><br>
+  <strong>De ERA5-Land y un ensamble CMIP6 a evidencia reproducible para decisiones energéticas</strong><br>
   Caso académico inspirado en el clúster eólico Jemeiwaa Ka'I
 </p>
 
@@ -13,193 +13,206 @@
   <img alt="CI" src="https://github.com/LindaCatalina/jemeiwaa-wind-energy-climate-risk/actions/workflows/ci.yml/badge.svg">
 </p>
 
-> **Conclusión ejecutiva.** El ensamble analizado no muestra evidencia robusta
-> de una degradación sistemática del recurso eólico bajo SSP1-2.6, SSP2-4.5 y
-> SSP5-8.5. La señal central es neutra a positiva, pero la dispersión entre
-> modelos y la sensibilidad al método impiden traducirla en una garantía de
-> producción o en un P90 financiero.
+> **Conclusión ejecutiva.** El ensamble no muestra una degradación robusta y
+> común a los tres escenarios. Para 2070–2099, el método que conserva la señal
+> futura produce medianas de −2,88 % (SSP1-2.6), +3,21 % (SSP2-4.5) y +6,29 %
+> (SSP5-8.5), pero todas las bandas P10–P90 incluyen cambios negativos. La
+> decisión empresarial debe considerar la dispersión entre modelos y la
+> sensibilidad metodológica, no solamente la mediana.
 
-![Cambio del factor de planta y percentiles](resultados_reproducibles/legado/figuras/01_cambio_cf_percentiles.png)
+![Cambio del factor de planta con percentiles](results/figures/02_cambio_cf_percentiles.png)
 
-## El problema de decisión
+## Pregunta de decisión
 
-¿Cómo podría cambiar la generación potencial de un parque eólico en La Guajira
-entre 2040 y 2099, y cuánta confianza puede tener una empresa en esa señal?
+¿Cómo podría cambiar la generación potencial de una planta eólica virtual en
+La Guajira entre 2040 y 2099, y cuánta confianza puede asignarse a esa señal?
 
-El estudio representa una planta virtual de **162 turbinas × 6,8 MW = 1.101,6
-MW**. Es una configuración académica inspirada en Jemeiwaa Ka'I, no la
-configuración contractual del proyecto real. Ecopetrol reporta actualmente una
-capacidad aproximada de 1.087 MW para el proyecto real.
+El caso representa **162 turbinas × 6,8 MW = 1.101,6 MW**. Es una configuración
+académica inspirada en Jemeiwaa Ka'I, no una descripción contractual del
+proyecto real.
 
-| Pregunta empresarial | Evidencia obtenida | Lectura correcta |
+| Pregunta empresarial | Evidencia | Interpretación responsable |
 |---|---:|---|
-| ¿Se deteriora sistemáticamente el recurso? | No en la mediana de los tres escenarios | No equivale a ausencia de riesgo |
-| ¿Cuál es el principal riesgo climático? | Dispersión intermodelo y metodológica | Trabajar con bandas, no sólo con promedios |
-| ¿SSP5-8.5 muestra oportunidad? | Señal central positiva, especialmente sin recentrado | Es una sensibilidad, no un pronóstico garantizado |
-| ¿La energía absoluta es bancable? | No | Requiere mediciones y pérdidas de ingeniería que aquí no existen |
+| ¿Existe una pérdida sistemática del recurso? | No en la mediana de todos los escenarios | Algunas simulaciones sí proyectan disminuciones |
+| ¿Cuál es el principal riesgo? | Dispersión intermodelo y sensibilidad al sesgo | Trabajar con bandas y escenarios |
+| ¿SSP5-8.5 implica una mejora segura? | P50 positivo, P10 negativo | No es una garantía de aumento |
+| ¿La energía calculada es bancable? | No | Es una equivalencia académica, no un P90 financiero |
 
-## Resultados con incertidumbre explícita
+## Corrección metodológica clave
 
-Cambios relativos del factor de planta para 2070–2099 frente a 1981–2014:
+La versión inicial aplicaba una síntesis Weibull que conservaba solo cerca del
+**62,65 %** del viento medio diario. Aplicar la curva de potencia directamente
+a la media diaria producía el problema opuesto: un CF histórico cercano a
+0,65. Ambos caminos eran incompatibles.
 
-| Escenario | Reproducción legada P50 | Banda P10–P90 | Sensibilidad sin recentrado P50 | Banda P10–P90 |
+La versión actual utiliza **144 estados intradiarios Weibull deterministas por
+día**, normalizados para conservar exactamente la velocidad media diaria antes
+de integrar la curva de potencia. Con una sola definición para toda la cadena:
+
+- la mediana histórica entre los 12 modelos es **CF = 0,453**;
+- el rango de medias históricas por modelo es **0,448–0,475**;
+- el P50 mensual histórico varía aproximadamente entre **0,28 y 0,53**;
+- energía, CF anual y estacionalidad se derivan ahora del mismo cálculo.
+
+Los 144 estados son una cuadratura estadística, **no viento observado de 10
+minutos**. La explicación y la ecuación de conservación están en
+[Metodología](docs/METODOLOGIA.md).
+
+### Diagnóstico histórico de la corrección
+
+![Diagnóstico histórico de la corrección de sesgo](results/figures/05_validacion_correccion_sesgo.png)
+
+La comparación se realiza sobre P10, P50 y P90 mensuales de 1981–2014, sin
+emparejar años individuales de ERA5-Land y los GCM. El error residual casi
+nulo es esperado porque estos cuantiles históricos son los objetivos de
+calibración del Quantile Mapping; por tanto, la figura documenta el ajuste
+histórico y **no constituye validación predictiva independiente**.
+Los valores auditables están en
+[`validacion_cuantiles_mensuales.csv`](results/tables/validacion_cuantiles_mensuales.csv)
+y
+[`validacion_error_cuantiles_por_modelo.csv`](results/tables/validacion_error_cuantiles_por_modelo.csv).
+
+## Línea base histórica
+
+![Línea base histórica](results/figures/01_linea_base_historica.png)
+
+La estacionalidad conserva el patrón de máximos alrededor de junio–julio y
+mínimos en septiembre–octubre. Las diferencias entre modelos son pequeñas en
+el histórico porque la corrección por cuantiles alinea sus climatologías con
+ERA5-Land.
+
+## Cambios futuros e incertidumbre
+
+Resultados para 2070–2099 respecto de 1981–2014:
+
+| Escenario | P10 | P50 | P90 | Modelos con cambio ≥ 0 |
 |---|---:|---:|---:|---:|
-| SSP1-2.6 | −0,25 % | −5,73 a +3,13 % | −1,13 % | −8,49 a +4,29 % |
-| SSP2-4.5 | +0,12 % | −3,59 a +3,68 % | +4,88 % | −3,14 a +9,25 % |
-| SSP5-8.5 | +2,32 % | −4,16 a +7,54 % | +11,09 % | +0,28 a +14,96 % |
+| SSP1-2.6 | −6,92 % | −2,88 % | +4,78 % | 5/12 |
+| SSP2-4.5 | −6,92 % | +3,21 % | +6,33 % | 7/12 |
+| SSP5-8.5 | −4,60 % | +6,29 % | +9,76 % | 9/12 |
 
-Los percentiles son **empíricos del ensamble de 12 modelos**; CMIP6 no es una
-muestra probabilística equiprobable. La diferencia entre las dos columnas es
-información útil: cuantifica cuánto depende la conclusión del tratamiento de
-sesgo futuro.
+P10, P50 y P90 son percentiles empíricos del ensamble; los modelos CMIP6 no
+constituyen una muestra probabilística equiprobable.
 
-### Prueba de robustez metodológica
+### Sensibilidad al tratamiento del sesgo futuro
 
-![Sensibilidad sin recentrado](resultados_reproducibles/sensibilidad_sin_recentrado/figuras/01_cambio_cf_percentiles.png)
+![Sensibilidad metodológica](results/figures/03_sensibilidad_metodologica.png)
 
-### Estacionalidad del recurso
+El procedimiento original recentraba cada escenario futuro hacia la mediana
+histórica y reducía parte de la señal climática. Por eso se conserva como
+comparación y el método sin recentrado se utiliza como resultado principal.
+La distancia entre ambos es incertidumbre metodológica explícita.
 
-![Percentiles mensuales](resultados_reproducibles/sensibilidad_sin_recentrado/figuras/04_cf_mensual_percentiles.png)
+### Comportamiento mensual
 
-### Energía P50/P90: alcance académico
+![Estacionalidad futura](results/figures/04_estacionalidad_cf.png)
 
-![Energía académica P50 y P90](resultados_reproducibles/sensibilidad_sin_recentrado/figuras/03_energia_p50_p90.png)
+## Energía: alcance estrictamente académico
 
-En esta figura, P90 de excedencia corresponde al cuantil bajo `q10`: un valor
-superado por aproximadamente 90 % de la muestra empírica. **No es un P90
-financiero.** Para entregarlo a una empresa hacen falta viento observado
-horario/10-min, curva V172 certificada, estelas, disponibilidad, pérdidas
-eléctricas y una propagación trazable de sus incertidumbres. El módulo
-`run_bankability.py` bloquea el cálculo si esos insumos no están completos.
+Las tablas incluyen energía anual equivalente calculada como:
 
-## Metodología
+```text
+Energía equivalente = CF anual × 1.101,6 MW × 8.760 h
+```
+
+El histórico del método principal tiene aproximadamente **4.000 GWh de q10** y
+**4.400 GWh de q50**. Estas cifras permiten verificar coherencia matemática,
+pero **no constituyen una estimación bancable ni un P90 financiero**. Para ello
+se necesitan viento horario/10-min observado, curva V172 certificada, estelas,
+disponibilidad, pérdidas eléctricas, restricciones y propagación trazable de
+incertidumbres. Consulte [Limitaciones](docs/LIMITACIONES.md).
+
+## Metodología resumida
 
 ```mermaid
 flowchart LR
-    A[ERA5-Land<br>1981–2014] --> C[Control de calidad<br>y referencia]
-    B[12 modelos CMIP6<br>historical + 3 SSP] --> D[Corrección de sesgo<br>mensual]
+    A[ERA5-Land<br>1981–2014] --> C[Referencia y<br>control de calidad]
+    B[12 GCM CMIP6<br>historical + 3 SSP] --> D[QM mensual<br>+ sensibilidad]
     C --> D
-    D --> E[Viento a 150 m<br>densidad + curva proxy]
-    E --> F[Factor de planta<br>y energía académica]
-    F --> G[2040–2069<br>2070–2099]
-    G --> H[P10 · P50 · P90<br>sensibilidad]
+    D --> E[Viento a 150 m<br>+ densidad]
+    E --> F[144 estados/día<br>media conservada]
+    F --> G[Curva proxy<br>+ pérdidas 10 %]
+    G --> H[CF, energía y<br>P10/P50/P90]
 ```
 
-1. ERA5-Land diario aporta `u10`, `v10`, temperatura a 2 m y presión superficial.
-2. Se fija un ensamble canónico de 12 GCM para evitar cambios silenciosos.
-3. El viento se corrige por cuantiles mensuales y se extrapola de 10 a 150 m con
-   exponente `α = 0,14`.
-4. La potencia usa una curva V164-8 MW escalada a 6,8 MW, densidad cuando está
-   disponible y pérdidas académicas del 10 %.
-5. Se comparan 2040–2069 y 2070–2099 contra 1981–2014, con percentiles
-   intermodelo e interanuales.
-6. Una sensibilidad separada elimina el recentrado futuro, sin sobrescribir el
-   resultado presentado.
+Periodos: histórico 1981–2014, horizonte medio 2040–2069 y horizonte lejano
+2070–2099. El detalle está en [Metodología](docs/METODOLOGIA.md).
 
-El detalle de decisiones, fórmulas y hallazgos está en el
-[informe de auditoría](INFORME_AUDITORIA.md).
-
-## Reproducir sin descargar 5,7 GiB
-
-El repositorio incluye código, tablas auditadas y una galería curada; **no
-incluye datos crudos**.
+## Reproducción rápida sin datos crudos
 
 ```bash
 git clone https://github.com/LindaCatalina/jemeiwaa-wind-energy-climate-risk.git
 cd jemeiwaa-wind-energy-climate-risk
 python -m venv .venv
-```
-
-Windows PowerShell:
-
-```powershell
-.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
-python run_portfolio.py --check-only
-python run_portfolio.py
+python scripts/rebuild_figures.py --check-only
+python scripts/rebuild_figures.py
 ```
 
-Linux/macOS:
+Este nivel reconstruye las cinco figuras únicamente desde los CSV
+versionados y verifica tablas, rangos físicos, dimensiones y contenido. No
+necesita red ni NetCDF.
 
-```bash
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-python run_portfolio.py --check-only
-python run_portfolio.py
-```
-
-`run_portfolio.py` reconstruye las cuatro figuras publicadas exclusivamente a
-partir de los CSV versionados y verifica dimensiones, contenido y coherencia de
-las tablas. No necesita red ni NetCDF.
-
-## Reconstrucción completa desde las fuentes
-
-Los manifiestos públicos conservan las 136 solicitudes ERA5-Land y los 215
-`zstore` CMIP6 exactos utilizados. La descarga completa requiere una cuenta CDS,
-aceptar sus términos, tiempo de cómputo y al menos 12 GB libres.
+## Reconstrucción completa desde fuentes
 
 ```bash
 python -m pip install -r requirements-download.txt
-python run_full_rebuild.py --dry-run
-python run_full_rebuild.py
+python scripts/run_full_rebuild.py --dry-run
+python scripts/run_full_rebuild.py
 ```
 
-El flujo completo está protegido: en una carpeta que ya contenga derivados se
-detiene antes de reemplazarlos. Fuentes, licencias y configuración de CDS:
-[docs/DATOS.md](docs/DATOS.md).
+Requiere una cuenta CDS, aceptar sus términos, conexión a las fuentes CMIP6,
+tiempo de cómputo y espacio en disco. Los 136 pedidos ERA5-Land y 215 almacenes
+CMIP6 utilizados están fijados en `data/`. Consulte [Datos](docs/DATOS.md) y
+[Reproducibilidad](docs/REPRODUCIBILIDAD.md).
+
+## Estructura
+
+```text
+├── README.md
+├── CITATION.cff
+├── requirements.txt
+├── requirements-download.txt
+├── .github/                 # validación automática
+├── data/                    # manifiestos de fuentes, no datos crudos
+├── Datos_Era5/              # preparación de ERA5-Land
+├── CMIP6_Guajira/           # sesgo y productos climáticos
+├── reproducibilidad/        # núcleo científico y percentiles
+├── scripts/                 # ejecución, descargas y controles
+├── tests/                   # pruebas automáticas
+├── results/
+│   ├── figures/             # cinco figuras públicas verificadas
+│   └── tables/              # resultados auditables
+└── docs/
+    ├── DATOS.md
+    ├── METODOLOGIA.md
+    ├── REPRODUCIBILIDAD.md
+    └── LIMITACIONES.md
+```
+
+Los NetCDF, notebooks exploratorios, resultados sustituidos y documentos de
+preparación permanecen fuera de GitHub mediante `.gitignore`.
 
 ## Habilidades demostradas
 
-| Área | Evidencia en el proyecto |
-|---|---|
-| Ciencia de datos climáticos | ERA5-Land, CMIP6, calendarios climáticos, NetCDF, Xarray y Dask |
-| Analítica para energía | Curva de potencia, densidad, factor de planta, energía y escenarios SSP |
-| Incertidumbre | P10/P50/P90, dispersión intermodelo, variabilidad interanual y sensibilidad |
-| Ingeniería reproducible | Entornos fijados, manifiestos de fuentes, CLI, pruebas y GitHub Actions |
-| Calidad y comunicación | Auditoría de 575 NetCDF, validación de figuras y traducción a decisiones |
-| Pensamiento crítico | Separación explícita entre resultado académico y evaluación bancable |
-
-## Organización del repositorio
-
-```text
-├── data/                         # manifiestos; nunca datos crudos
-├── Datos_Era5/                   # código de descarga y transformación ERA5
-├── CMIP6_Guajira/                # código climático original y tablas legadas
-├── reproducibilidad/             # auditoría, métricas, percentiles y sensibilidad
-├── resultados_reproducibles/     # tablas completas y cuatro figuras curadas
-├── bankability/                  # puerta de calidad para un futuro P90 financiero
-├── docs/                         # datos, arquitectura y guía de GitHub
-├── scripts/                      # descarga y controles de publicación
-├── tests/                        # pruebas automáticas
-├── run_portfolio.py              # reproducción rápida sin datos crudos
-├── run_full_rebuild.py           # reconstrucción completa desde fuentes
-└── run_reproducible.py           # auditoría científica con datos locales
-```
-
-## Calidad y transparencia
-
-- Los 575 NetCDF locales abrieron correctamente en la auditoría profunda.
-- Las dos figuras legadas vacías fueron identificadas y no se publican.
-- La selección pública contiene cero datos crudos, cero archivos >10 MiB y cero
-  duplicados exactos.
-- GitHub Actions repite pruebas de estructura, tablas y figuras en cada cambio.
-- Los scripts exploratorios defectuosos o sustituidos permanecen intactos
-  localmente, pero no se publican; el punto de entrada público es inequívoco.
-
-Consulte [resultados y lectura recomendada](resultados_reproducibles/RESUMEN_EJECUCION.md),
-[arquitectura](docs/ESTRUCTURA.md), [reproducibilidad](docs/REPRODUCIBILIDAD.md) y
-[publicación clic por clic](docs/GITHUB_PUBLICACION.md).
+- Python científico: NumPy, pandas, Xarray, Matplotlib y NetCDF.
+- Datos climáticos: ERA5-Land, CMIP6, calendarios y escenarios SSP.
+- Analítica energética: extrapolación vertical, densidad, curva de potencia,
+  CF y energía equivalente.
+- Incertidumbre: P10/P50/P90, dispersión intermodelo y sensibilidad de método.
+- Ingeniería reproducible: manifiestos, entradas CLI, pruebas y GitHub Actions.
+- Control de calidad: detección y corrección de una inconsistencia no lineal sin
+  ocultar las limitaciones del estudio.
 
 ## Autores y citación
 
 **Linda Catalina Correa Lozano** · **Juan Camilo Bedoya Carmona**  
-Proyecto académico de Climatología. La forma de citación está en
-[`CITATION.cff`](CITATION.cff). La licencia de reutilización debe ser acordada
-por ambos autores antes de publicarla.
+Proyecto académico de Climatología. La citación se encuentra en
+[`CITATION.cff`](CITATION.cff).
 
 ### Fuentes principales
 
 - [ERA5-Land daily statistics — Copernicus CDS](https://cds.climate.copernicus.eu/datasets/derived-era5-land-daily-statistics?tab=documentation)
-- [Pangeo CMIP6 Cloud — acceso a datos](https://pangeo-data.github.io/pangeo-cmip6-cloud/accessing_data.html)
+- [Pangeo CMIP6 Cloud — acceso](https://pangeo-data.github.io/pangeo-cmip6-cloud/accessing_data.html)
 - [Vestas V172-7.2 MW](https://www.vestas.com/en/energy-solutions/onshore-wind-turbines/enventus-platform/V172-7-2-MW)
 - [Proyecto Jemeiwaa Ka'I — Ecopetrol](https://www.ecopetrol.com.co/wps/portal/Home/es/noticias/detalle/ecopetrol-suscribio-un-acuerdo-marco-de-inversion-ami-con-aes)

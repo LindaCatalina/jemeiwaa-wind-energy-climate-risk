@@ -7,28 +7,38 @@ import ast
 import json
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP_PARTS = {".git", ".venv", "__pycache__", ".pytest_cache", "private_data", "private_documents"}
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from reproducibilidad.config import CANONICAL_MODELS, EXPERIMENTS  # noqa: E402
+
+SKIP_PARTS = {".git", ".venv", "__pycache__", ".pytest_cache", "_archivo_interno"}
 REQUIRED = (
     "README.md",
-    "INFORME_AUDITORIA.md",
     "requirements.txt",
     "requirements-download.txt",
-    "environment.yml",
-    "run_portfolio.py",
-    "run_full_rebuild.py",
-    "run_reproducible.py",
-    "run_bankability.py",
+    "scripts/rebuild_figures.py",
+    "scripts/run_analysis.py",
+    "scripts/run_full_rebuild.py",
+    "CMIP6_Guajira/bias_eval_cmip6.py",
+    "CMIP6_Guajira/prepare_bias_corrected_inputs.py",
+    "Datos_Era5/unificar_era5_guajira.py",
+    "Datos_Era5/era5_altura_densidad.py",
     "reproducibilidad/config.py",
-    "bankability/config.example.json",
     "data/cmip6_source_manifest.csv",
     "data/era5_request_manifest.csv",
     "data/README.md",
-    "resultados_reproducibles/RESUMEN_EJECUCION.md",
-    "resultados_reproducibles/bancabilidad/estado_bancabilidad.json",
+    "docs/DATOS.md",
+    "docs/METODOLOGIA.md",
+    "docs/REPRODUCIBILIDAD.md",
+    "docs/LIMITACIONES.md",
+    "results/tables/percentiles_cambio_cf.csv",
+    "results/figures/01_linea_base_historica.png",
     ".gitattributes",
     ".gitignore",
     "CITATION.cff",
@@ -103,11 +113,29 @@ def main() -> int:
 
     if args.require_data:
         era5 = ROOT / "Datos_Era5" / "era5_guajira_daily_1981_2014.nc"
-        synthetic = list((ROOT / "CMIP6_Guajira" / "synthetic_10min").glob("*.nc"))
+        corrected_dir = ROOT / "CMIP6_Guajira" / "corrected"
+        expected_corrected = {
+            f"{model}_{experiment}_wind_bc.nc"
+            for model in CANONICAL_MODELS
+            for experiment in EXPERIMENTS
+        }
+        corrected = {path.name for path in corrected_dir.glob("*.nc")}
+        missing_corrected = expected_corrected - corrected
         if not era5.is_file() or era5.stat().st_size < 1024:
             failures.append("Falta ERA5 materializado; ejecute scripts/download_era5.py y unifique.")
-        if len(synthetic) != 48 or any(path.stat().st_size < 1024 for path in synthetic):
-            failures.append(f"Se esperaban 48 series sinteticas NetCDF; encontradas={len(synthetic)}")
+        if missing_corrected:
+            failures.append(
+                "Faltan series corregidas canÃ³nicas: " + ", ".join(sorted(missing_corrected))
+            )
+        invalid_corrected = [
+            name
+            for name in expected_corrected & corrected
+            if (corrected_dir / name).stat().st_size < 1024
+        ]
+        if invalid_corrected:
+            failures.append(
+                "Series corregidas vacÃ­as o daÃ±adas: " + ", ".join(sorted(invalid_corrected))
+            )
 
     result = {
         "status": "PASS" if not failures else "FAIL",

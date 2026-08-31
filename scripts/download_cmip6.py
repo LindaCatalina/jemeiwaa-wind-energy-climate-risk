@@ -80,7 +80,7 @@ def main() -> int:
         dataset.close()
 
     print("[OK] Descarga CMIP6 completa.")
-    print("Siguiente paso: python run_reproducible.py")
+    print("Siguiente paso: python scripts/run_analysis.py")
     return 0
 
 

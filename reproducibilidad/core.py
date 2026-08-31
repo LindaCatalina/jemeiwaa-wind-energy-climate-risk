@@ -173,10 +173,89 @@ def cf_from_wind_reference_density(wind_10m: xr.DataArray) -> xr.DataArray:
     return (power / RATING_MW).rename("cf")
 
 
+def deterministic_weibull_multipliers(
+    n_states: int = 144, shape_k: float = 2.0
+) -> np.ndarray:
+    """Estados intradiarios deterministas cuya media es exactamente uno.
+
+    Se usan puntos medios de probabilidad de una Weibull. No son observaciones
+    de 10 minutos ni pretenden reproducir rampas temporales: son una cuadratura
+    determinista para integrar la curva de potencia sin aplicar dicha curva a
+    la media diaria. Normalizar los multiplicadores elimina el error de escala
+    del generador legado y conserva exactamente el viento medio de cada día.
+    """
+    if n_states < 2:
+        raise ValueError("n_states debe ser al menos 2")
+    if shape_k <= 0:
+        raise ValueError("shape_k debe ser positivo")
+    probability = (np.arange(n_states, dtype=float) + 0.5) / n_states
+    multipliers = (-np.log1p(-probability)) ** (1.0 / shape_k)
+    return multipliers / multipliers.mean()
+
+
+def daily_cf_from_mean_hub_wind(
+    mean_hub_wind: xr.DataArray,
+    rho: xr.DataArray | float = RHO_REF,
+    *,
+    n_states: int = 144,
+    shape_k: float = 2.0,
+    chunk_days: int = 4096,
+) -> xr.DataArray:
+    """Integra la potencia subdiaria conservando la media diaria de viento.
+
+    La entrada es viento medio diario a altura de buje. Para cada día se
+    construyen ``n_states`` estados Weibull deterministas, se normalizan a la
+    media diaria exacta y se evalúa la misma curva proxy del trabajo. El
+    resultado es el CF medio diario, listo para agregar por mes o por año.
+    """
+    wind = as_time_series(mean_hub_wind)
+    wind_values = np.maximum(np.asarray(wind.values, dtype=float), 0.0)
+    if not np.isfinite(wind_values).all():
+        raise ValueError("El viento medio contiene valores no finitos")
+
+    if isinstance(rho, xr.DataArray):
+        density = as_time_series(rho)
+        if density.sizes["time"] != wind.sizes["time"]:
+            raise ValueError("Viento y densidad no tienen la misma longitud")
+        density_values = np.asarray(density.values, dtype=float)
+    else:
+        density_values = np.full(wind_values.shape, float(rho), dtype=float)
+    if not np.isfinite(density_values).all() or np.any(density_values <= 0):
+        raise ValueError("La densidad contiene valores inválidos")
+
+    multipliers = deterministic_weibull_multipliers(n_states, shape_k)
+    v_comp = _V_TABLE * (12.0 / 13.0)
+    v_comp[0] = 3.0
+    p_mw = (_P_TABLE_KW / 1000.0) * (RATING_MW / 8.0)
+    daily_cf = np.empty_like(wind_values, dtype=float)
+
+    for start in range(0, len(wind_values), chunk_days):
+        stop = min(start + chunk_days, len(wind_values))
+        speeds = wind_values[start:stop, None] * multipliers[None, :]
+        power = np.interp(speeds, v_comp, p_mw, left=0.0, right=0.0)
+        power = np.where((speeds >= 3.0) & (speeds <= 25.0), power, 0.0)
+        power *= density_values[start:stop, None] / RHO_REF
+        power *= 1.0 - LOSSES
+        daily_cf[start:stop] = power.mean(axis=1) / RATING_MW
+
+    return xr.DataArray(
+        daily_cf,
+        dims=("time",),
+        coords={"time": wind["time"]},
+        name="cf_daily_subdaily_integrated",
+        attrs={
+            "subdaily_method": "deterministic Weibull midpoint quadrature",
+            "subdaily_states_per_day": n_states,
+            "weibull_shape_k": shape_k,
+            "daily_mean_wind_conserved": "true",
+            "observed_10min_data": "false",
+        },
+    )
+
+
 def year_values(da: xr.DataArray) -> np.ndarray:
     return np.asarray(da["time"].dt.year.values, dtype=int)
 
 
 def month_values(da: xr.DataArray) -> np.ndarray:
     return np.asarray(da["time"].dt.month.values, dtype=int)
-
